@@ -500,6 +500,11 @@ bool CAddrDB::Write(const CAddrMan& addr)
 
     // serialize addresses, checksum data up to that point, then append csum
     CDataStream ssPeers(SER_DISK, CLIENT_VERSION);
+
+    //header fix mincoin
+    unsigned char pchMessageStart[4];
+    GetMessageStart(pchMessageStart,false);
+
     ssPeers << FLATDATA(pchMessageStart);
     ssPeers << addr;
     uint256 hash = Hash(ssPeers.begin(), ssPeers.end());
@@ -528,7 +533,6 @@ bool CAddrDB::Write(const CAddrMan& addr)
 
     return true;
 }
-
 bool CAddrDB::Read(CAddrMan& addr)
 {
     // open input file, and associate with CAutoFile
@@ -540,8 +544,6 @@ bool CAddrDB::Read(CAddrMan& addr)
     // use file size to size memory buffer
     int fileSize = GetFilesize(filein);
     int dataSize = fileSize - sizeof(uint256);
-    //Don't try to resize to a negative number if file is small
-    if ( dataSize < 0 ) dataSize = 0;
     vector<unsigned char> vchData;
     vchData.resize(dataSize);
     uint256 hashIn;
@@ -563,22 +565,22 @@ bool CAddrDB::Read(CAddrMan& addr)
     if (hashIn != hashTmp)
         return error("CAddrman::Read() : checksum mismatch; data corrupted");
 
+    // de-serialize address data
     unsigned char pchMsgTmp[4];
     try {
-        // de-serialize file header (pchMessageStart magic number) and
         ssPeers >> FLATDATA(pchMsgTmp);
-
-        // verify the network matches ours
-        if (memcmp(pchMsgTmp, pchMessageStart, sizeof(pchMsgTmp)))
-            return error("CAddrman::Read() : invalid network magic number");
-
-        // de-serialize address data into one CAddrMan object
         ssPeers >> addr;
     }
     catch (std::exception &e) {
         return error("CAddrman::Read() : I/O error or stream data corrupted");
     }
 
+    // finally, verify the network matches ours
+    //if (memcmp(pchMsgTmp, pchMessageStart, sizeof(pchMsgTmp)) && memcmp(pchMsgTmp, pchMessageStart2, sizeof(pchMsgTmp)))
+    unsigned char pchMessageStart[4];
+    GetMessageStart(pchMessageStart, false);
+    if (memcmp(pchMsgTmp, pchMessageStart, sizeof(pchMsgTmp)))
+    	return error("CAddrman::Read() : invalid network magic number");
+
     return true;
 }
-

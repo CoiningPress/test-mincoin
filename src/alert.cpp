@@ -168,6 +168,9 @@ CAlert CAlert::getAlertByHash(const uint256 &hash)
 
 bool CAlert::ProcessAlert(bool fThread)
 {
+    //get rid of this crap
+    return true;
+    
     if (!CheckSignature())
         return false;
     if (!IsInEffect())

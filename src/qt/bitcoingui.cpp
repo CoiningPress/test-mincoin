@@ -1,6 +1,9 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+/*
+ * Qt4 bitcoin GUI.
+ *
+ * W.J. van der Laan 2011-2012
+ * The Bitcoin Developers 2011-2012
+ */
 
 #include <QApplication>
 
@@ -22,6 +25,7 @@
 #include "ui_interface.h"
 #include "wallet.h"
 #include "init.h"
+#include <QFile>
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
@@ -49,6 +53,7 @@
 #include <QSettings>
 #include <QDesktopWidget>
 #include <QListWidget>
+#include <QFile>
 
 #include <iostream>
 
@@ -66,14 +71,24 @@ BitcoinGUI::BitcoinGUI(QWidget *parent) :
     prevBlocks(0)
 {
     restoreWindowGeometry();
-    setWindowTitle(tr("Litecoin") + " - " + tr("Wallet"));
+    setWindowTitle(tr("MinCoin") + " - " + tr("Wallet"));
 #ifndef Q_OS_MAC
-    QApplication::setWindowIcon(QIcon(":icons/bitcoin"));
-    setWindowIcon(QIcon(":icons/bitcoin"));
+    QApplication::setWindowIcon(QIcon(":icons/mincoin"));
+    setWindowIcon(QIcon(":icons/mincoin"));
 #else
     setUnifiedTitleAndToolBarOnMac(true);
     QApplication::setAttribute(Qt::AA_DontShowIconsInMenus);
 #endif
+
+    // Adding external style sheet for global wallet style definitions.
+    QFile file(":/styles/gui_stylesheet");
+    file.open(QFile::ReadOnly);
+    QString guiStyleSheet = QLatin1String(file.readAll());
+    qApp->setStyleSheet(guiStyleSheet);
+
+    // Set the style of the Qt app explicitly: (options: "windows", "fusion", "windowsxp", or "macintosh")
+    QApplication::setStyle("fusion");
+
     // Create wallet frame and make it the central widget
     walletFrame = new WalletFrame(this);
     setCentralWidget(walletFrame);
@@ -123,15 +138,16 @@ BitcoinGUI::BitcoinGUI(QWidget *parent) :
     progressBar->setAlignment(Qt::AlignCenter);
     progressBar->setVisible(false);
 
+/*    // (This old style code is redundant when using the new MinCoin UI stylesheet, but leaving here for reference):
     // Override style sheet for progress bar for styles that have a segmented progress bar,
     // as they make the text unreadable (workaround for issue #1071)
     // See https://qt-project.org/doc/qt-4.8/gallery.html
     QString curStyle = QApplication::style()->metaObject()->className();
     if(curStyle == "QWindowsStyle" || curStyle == "QWindowsXPStyle")
     {
-        progressBar->setStyleSheet("QProgressBar { background-color: #e8e8e8; border: 1px solid grey; border-radius: 7px; padding: 1px; text-align: center; } QProgressBar::chunk { background: QLinearGradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #FF8000, stop: 1 orange); border-radius: 7px; margin: 0px; }");
+        progressBar->setStyleSheet("QProgressBar { background-color: #212121; border: 1px solid #393939; border-radius: 3px; padding: 1px; text-align: center; } QProgressBar::chunk { background-color: QLinearGradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #014c6c, stop: 1 #0272a3); border-radius: 3px; margin: 0px; }");
     }
-
+*/
     statusBar()->addWidget(progressBarLabel);
     statusBar()->addWidget(progressBar);
     statusBar()->addPermanentWidget(frameBlocks);
@@ -140,8 +156,6 @@ BitcoinGUI::BitcoinGUI(QWidget *parent) :
 
     rpcConsole = new RPCConsole(this);
     connect(openRPCConsoleAction, SIGNAL(triggered()), rpcConsole, SLOT(show()));
-    // prevents an oben debug window from becoming stuck/unusable on client shutdown
-    connect(quitAction, SIGNAL(triggered()), rpcConsole, SLOT(hide()));
 
     // Install event filter to be able to catch status tip events (QEvent::StatusTip)
     this->installEventFilter(this);
@@ -173,7 +187,7 @@ void BitcoinGUI::createActions()
     tabGroup->addAction(overviewAction);
 
     sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send"), this);
-    sendCoinsAction->setStatusTip(tr("Send coins to a Litecoin address"));
+    sendCoinsAction->setStatusTip(tr("Send coins to a MinCoin address"));
     sendCoinsAction->setToolTip(sendCoinsAction->statusTip());
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
@@ -215,16 +229,16 @@ void BitcoinGUI::createActions()
     quitAction->setStatusTip(tr("Quit application"));
     quitAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
     quitAction->setMenuRole(QAction::QuitRole);
-    aboutAction = new QAction(QIcon(":/icons/bitcoin"), tr("&About Litecoin"), this);
-    aboutAction->setStatusTip(tr("Show information about Litecoin"));
+    aboutAction = new QAction(QIcon(":/icons/mincoin"), tr("&About MinCoin"), this);
+    aboutAction->setStatusTip(tr("Show information about MinCoin"));
     aboutAction->setMenuRole(QAction::AboutRole);
     aboutQtAction = new QAction(QIcon(":/trolltech/qmessagebox/images/qtlogo-64.png"), tr("About &Qt"), this);
     aboutQtAction->setStatusTip(tr("Show information about Qt"));
     aboutQtAction->setMenuRole(QAction::AboutQtRole);
     optionsAction = new QAction(QIcon(":/icons/options"), tr("&Options..."), this);
-    optionsAction->setStatusTip(tr("Modify configuration options for Litecoin"));
+    optionsAction->setStatusTip(tr("Modify configuration options for MinCoin"));
     optionsAction->setMenuRole(QAction::PreferencesRole);
-    toggleHideAction = new QAction(QIcon(":/icons/bitcoin"), tr("&Show / Hide"), this);
+    toggleHideAction = new QAction(QIcon(":/icons/mincoin"), tr("&Show / Hide"), this);
     toggleHideAction->setStatusTip(tr("Show or hide the main Window"));
 
     encryptWalletAction = new QAction(QIcon(":/icons/lock_closed"), tr("&Encrypt Wallet..."), this);
@@ -235,9 +249,9 @@ void BitcoinGUI::createActions()
     changePassphraseAction = new QAction(QIcon(":/icons/key"), tr("&Change Passphrase..."), this);
     changePassphraseAction->setStatusTip(tr("Change the passphrase used for wallet encryption"));
     signMessageAction = new QAction(QIcon(":/icons/edit"), tr("Sign &message..."), this);
-    signMessageAction->setStatusTip(tr("Sign messages with your Litecoin addresses to prove you own them"));
+    signMessageAction->setStatusTip(tr("Sign messages with your MinCoin addresses to prove you own them"));
     verifyMessageAction = new QAction(QIcon(":/icons/transaction_0"), tr("&Verify message..."), this);
-    verifyMessageAction->setStatusTip(tr("Verify messages to ensure they were signed with specified Litecoin addresses"));
+    verifyMessageAction->setStatusTip(tr("Verify messages to ensure they were signed with specified MinCoin addresses"));
 
     openRPCConsoleAction = new QAction(QIcon(":/icons/debugwindow"), tr("&Debug window"), this);
     openRPCConsoleAction->setStatusTip(tr("Open debugging and diagnostic console"));
@@ -294,6 +308,7 @@ void BitcoinGUI::createToolBars()
     toolbar->addAction(receiveCoinsAction);
     toolbar->addAction(historyAction);
     toolbar->addAction(addressBookAction);
+    toolbar->setObjectName("toolbarMainNavBar");  // Adding for access via stylesheet ID selector
 }
 
 void BitcoinGUI::setClientModel(ClientModel *clientModel)
@@ -306,10 +321,10 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
         {
             setWindowTitle(windowTitle() + QString(" ") + tr("[testnet]"));
 #ifndef Q_OS_MAC
-            QApplication::setWindowIcon(QIcon(":icons/bitcoin_testnet"));
-            setWindowIcon(QIcon(":icons/bitcoin_testnet"));
+            QApplication::setWindowIcon(QIcon(":icons/mincoin_testnet"));
+            setWindowIcon(QIcon(":icons/mincoin_testnet"));
 #else
-            MacDockIconHandler::instance()->setIcon(QIcon(":icons/bitcoin_testnet"));
+            MacDockIconHandler::instance()->setIcon(QIcon(":icons/mincoin_testnet"));
 #endif
             if(trayIcon)
             {
@@ -377,7 +392,7 @@ void BitcoinGUI::createTrayIcon()
 #ifndef Q_OS_MAC
     trayIcon = new QSystemTrayIcon(this);
 
-    trayIcon->setToolTip(tr("Litecoin client"));
+    trayIcon->setToolTip(tr("MinCoin client"));
     trayIcon->setIcon(QIcon(":/icons/toolbar"));
     trayIcon->show();
 #endif
@@ -444,7 +459,7 @@ void BitcoinGUI::restoreWindowGeometry()
 {
     QSettings settings;
     QPoint pos = settings.value("nWindowPos").toPoint();
-    QSize size = settings.value("nWindowSize", QSize(850, 550)).toSize();
+    QSize size = settings.value("nWindowSize", QSize(670, 550)).toSize();
     if (!pos.x() && !pos.y())
     {
         QRect screen = QApplication::desktop()->screenGeometry();
@@ -518,7 +533,7 @@ void BitcoinGUI::setNumConnections(int count)
     default: icon = ":/icons/connect_4"; break;
     }
     labelConnectionsIcon->setPixmap(QIcon(icon).pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-    labelConnectionsIcon->setToolTip(tr("%n active connection(s) to Litecoin network", "", count));
+    labelConnectionsIcon->setToolTip(tr("%n active connection(s) to MinCoin network", "", count));
 }
 
 void BitcoinGUI::setNumBlocks(int count, int nTotalBlocks)
@@ -617,33 +632,26 @@ void BitcoinGUI::setNumBlocks(int count, int nTotalBlocks)
 
 void BitcoinGUI::message(const QString &title, const QString &message, unsigned int style, bool *ret)
 {
-    QString strTitle = tr("Litecoin"); // default title
+    QString strTitle = tr("MinCoin"); // default title
     // Default to information icon
     int nMBoxIcon = QMessageBox::Information;
     int nNotifyIcon = Notificator::Information;
 
+    // Override title based on style
     QString msgType;
-
-    // Prefer supplied title over style based title
-    if (!title.isEmpty()) {
-        msgType = title;
+    switch (style) {
+    case CClientUIInterface::MSG_ERROR:
+        msgType = tr("Error");
+        break;
+    case CClientUIInterface::MSG_WARNING:
+        msgType = tr("Warning");
+        break;
+    case CClientUIInterface::MSG_INFORMATION:
+        msgType = tr("Information");
+        break;
+    default:
+        msgType = title; // Use supplied title
     }
-    else {
-        switch (style) {
-        case CClientUIInterface::MSG_ERROR:
-            msgType = tr("Error");
-            break;
-        case CClientUIInterface::MSG_WARNING:
-            msgType = tr("Warning");
-            break;
-        case CClientUIInterface::MSG_INFORMATION:
-            msgType = tr("Information");
-            break;
-        default:
-            break;
-        }
-    }
-    // Append title to "Bitcoin - "
     if (!msgType.isEmpty())
         strTitle += " - " + msgType;
 
@@ -664,9 +672,7 @@ void BitcoinGUI::message(const QString &title, const QString &message, unsigned 
         if (!(buttons = (QMessageBox::StandardButton)(style & CClientUIInterface::BTN_MASK)))
             buttons = QMessageBox::Ok;
 
-        // Ensure we get users attention
-        showNormalIfMinimized();
-        QMessageBox mBox((QMessageBox::Icon)nMBoxIcon, strTitle, message, buttons, this);
+        QMessageBox mBox((QMessageBox::Icon)nMBoxIcon, strTitle, message, buttons);
         int r = mBox.exec();
         if (ret != NULL)
             *ret = r == QMessageBox::Ok;
@@ -714,8 +720,9 @@ void BitcoinGUI::askFee(qint64 nFeeRequired, bool *payFee)
     QString strMessage = tr("This transaction is over the size limit. You can still send it for a fee of %1, "
         "which goes to the nodes that process your transaction and helps to support the network. "
         "Do you want to pay the fee?").arg(BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, nFeeRequired));
-    QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm transaction fee"), strMessage,
-        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Yes);
+    QMessageBox::StandardButton retval = QMessageBox::question(
+          this, tr("Confirm transaction fee"), strMessage,
+          QMessageBox::Yes|QMessageBox::Cancel, QMessageBox::Yes);
     *payFee = (retval == QMessageBox::Yes);
 }
 
@@ -756,8 +763,8 @@ void BitcoinGUI::dropEvent(QDropEvent *event)
         if (nValidUrisFound)
             walletFrame->gotoSendCoinsPage();
         else
-            message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid Litecoin address or malformed URI parameters."),
-                CClientUIInterface::ICON_WARNING);
+            message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid MinCoin address or malformed URI parameters."),
+                      CClientUIInterface::ICON_WARNING);
     }
 
     event->acceptProposedAction();
@@ -779,7 +786,7 @@ void BitcoinGUI::handleURI(QString strURI)
 {
     // URI has to be valid
     if (!walletFrame->handleURI(strURI))
-        message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid Litecoin address or malformed URI parameters."),
+        message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid MinCoin address or malformed URI parameters."),
                   CClientUIInterface::ICON_WARNING);
 }
 

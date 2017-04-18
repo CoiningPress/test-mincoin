@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2009-2012 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -20,6 +20,18 @@
 
 #ifndef WIN32
 #include <signal.h>
+#endif
+
+#if defined(USE_SSE2)
+#if !defined(MAC_OSX) && (defined(_M_IX86) || defined(__i386__) || defined(__i386))
+#ifdef _MSC_VER
+// MSVC 64bit is unable to use inline asm
+#include <intrin.h>
+#else
+// GCC Linux or i686-w64-mingw32
+#include <cpuid.h>
+#endif
+#endif
 #endif
 
 using namespace std;
@@ -179,12 +191,12 @@ bool AppInit(int argc, char* argv[])
         if (mapArgs.count("-?") || mapArgs.count("--help"))
         {
             // First part of help message is specific to bitcoind / RPC client
-            std::string strUsage = _("Litecoin version") + " " + FormatFullVersion() + "\n\n" +
+            std::string strUsage = _("Mincoin version") + " " + FormatFullVersion() + "\n\n" +
                 _("Usage:") + "\n" +
-                  "  litecoind [options]                     " + "\n" +
-                  "  litecoind [options] <command> [params]  " + _("Send command to -server or litecoind") + "\n" +
-                  "  litecoind [options] help                " + _("List commands") + "\n" +
-                  "  litecoind [options] help <command>      " + _("Get help for a command") + "\n";
+                  "  mincoind [options]                     " + "\n" +
+                  "  mincoind [options] <command> [params]  " + _("Send command to -server or mincoind") + "\n" +
+                  "  mincoind [options] help                " + _("List commands") + "\n" +
+                  "  mincoind [options] help <command>      " + _("Get help for a command") + "\n";
 
             strUsage += "\n" + HelpMessage();
 
@@ -194,7 +206,7 @@ bool AppInit(int argc, char* argv[])
 
         // Command-line RPC
         for (int i = 1; i < argc; i++)
-            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "litecoin:"))
+            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "mincoin:"))
                 fCommandLine = true;
 
         if (fCommandLine)
@@ -297,8 +309,8 @@ std::string HelpMessage()
 {
     string strUsage = _("Options:") + "\n" +
         "  -?                     " + _("This help message") + "\n" +
-        "  -conf=<file>           " + _("Specify configuration file (default: litecoin.conf)") + "\n" +
-        "  -pid=<file>            " + _("Specify pid file (default: litecoind.pid)") + "\n" +
+        "  -conf=<file>           " + _("Specify configuration file (default: mincoin.conf)") + "\n" +
+        "  -pid=<file>            " + _("Specify pid file (default: mincoind.pid)") + "\n" +
         "  -gen                   " + _("Generate coins (default: 0)") + "\n" +
         "  -datadir=<dir>         " + _("Specify data directory") + "\n" +
         "  -dbcache=<n>           " + _("Set database cache size in megabytes (default: 25)") + "\n" +
@@ -307,7 +319,7 @@ std::string HelpMessage()
         "  -socks=<n>             " + _("Select the version of socks proxy to use (4-5, default: 5)") + "\n" +
         "  -tor=<ip:port>         " + _("Use proxy to reach tor hidden services (default: same as -proxy)") + "\n"
         "  -dns                   " + _("Allow DNS lookups for -addnode, -seednode and -connect") + "\n" +
-        "  -port=<port>           " + _("Listen for connections on <port> (default: 9333 or testnet: 19333)") + "\n" +
+        "  -port=<port>           " + _("Listen for connections on <port> (default: 9334 or testnet: 19334)") + "\n" +
         "  -maxconnections=<n>    " + _("Maintain at most <n> connections to peers (default: 125)") + "\n" +
         "  -addnode=<ip>          " + _("Add a node to connect to and attempt to keep the connection open") + "\n" +
         "  -connect=<ip>          " + _("Connect only to the specified node(s)") + "\n" +
@@ -350,7 +362,7 @@ std::string HelpMessage()
 #endif
         "  -rpcuser=<user>        " + _("Username for JSON-RPC connections") + "\n" +
         "  -rpcpassword=<pw>      " + _("Password for JSON-RPC connections") + "\n" +
-        "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 9332 or testnet: 19332)") + "\n" +
+        "  -rpcport=<port>        " + _("Listen for JSON-RPC connections on <port> (default: 9335 or testnet: 19335)") + "\n" +
         "  -rpcallowip=<ip>       " + _("Allow JSON-RPC connections from specified IP address") + "\n" +
 #ifndef QT_GUI
         "  -rpcconnect=<ip>       " + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n" +
@@ -358,7 +370,6 @@ std::string HelpMessage()
         "  -rpcthreads=<n>        " + _("Set the number of threads to service RPC calls (default: 4)") + "\n" +
         "  -blocknotify=<cmd>     " + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n" +
         "  -walletnotify=<cmd>    " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n" +
-        "  -spendzeroconfchange   " + _("Spend unconfirmed change when sending transactions (default: 1)") + "\n" +
         "  -alertnotify=<cmd>     " + _("Execute command when a relevant alert is received (%s in cmd is replaced by message)") + "\n" +
         "  -upgradewallet         " + _("Upgrade wallet to latest format") + "\n" +
         "  -keypool=<n>           " + _("Set key pool size to <n> (default: 100)") + "\n" +
@@ -376,7 +387,7 @@ std::string HelpMessage()
         "  -blockmaxsize=<n>      "   + _("Set maximum block size in bytes (default: 250000)") + "\n" +
         "  -blockprioritysize=<n> "   + _("Set maximum size of high-priority/low-fee transactions in bytes (default: 27000)") + "\n" +
 
-        "\n" + _("SSL options: (see the Litecoin Wiki for SSL setup instructions)") + "\n" +
+        "\n" + _("SSL options: (see the Mincoin Wiki for SSL setup instructions)") + "\n" +
         "  -rpcssl                                  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n" +
         "  -rpcsslcertificatechainfile=<file.cert>  " + _("Server certificate file (default: server.cert)") + "\n" +
         "  -rpcsslprivatekeyfile=<file.pem>         " + _("Server private key (default: server.pem)") + "\n" +
@@ -466,8 +477,8 @@ bool AppInit2(boost::thread_group& threadGroup)
     // Minimum supported OS versions: WinXP SP3, WinVista >= SP1, Win Server 2008
     // A failure is non-critical and needs no further attention!
 #ifndef PROCESS_DEP_ENABLE
-    // We define this here, because GCCs winbase.h limits this to _WIN32_WINNT >= 0x0601 (Windows 7),
-    // which is not correct. Can be removed, when GCCs winbase.h is fixed!
+// We define this here, because GCCs winbase.h limits this to _WIN32_WINNT >= 0x0601 (Windows 7),
+// which is not correct. Can be removed, when GCCs winbase.h is fixed!
 #define PROCESS_DEP_ENABLE 0x00000001
 #endif
     typedef BOOL (WINAPI *PSETPROCDEPPOL)(DWORD);
@@ -499,6 +510,23 @@ bool AppInit2(boost::thread_group& threadGroup)
     sigemptyset(&sa_hup.sa_mask);
     sa_hup.sa_flags = 0;
     sigaction(SIGHUP, &sa_hup, NULL);
+#endif
+
+#if defined(USE_SSE2)
+    unsigned int cpuid_edx=0;
+#if !defined(MAC_OSX) && (defined(_M_IX86) || defined(__i386__) || defined(__i386))
+    // 32bit x86 Linux or Windows, detect cpuid features
+#if defined(_MSC_VER)
+    // MSVC
+    int x86cpuid[4];
+    __cpuid(x86cpuid, 1);
+    cpuid_edx = (unsigned int)buffer[3];
+#else
+    // Linux or i686-w64-mingw32 (gcc-4.6.3)
+    unsigned int eax, ebx, ecx;
+    __get_cpuid(1, &eax, &ebx, &ecx, &cpuid_edx);
+#endif
+#endif
 #endif
 
     // ********************************************************* Step 2: parameter interactions
@@ -628,7 +656,6 @@ bool AppInit2(boost::thread_group& threadGroup)
         if (nTransactionFee > 0.25 * COIN)
             InitWarning(_("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
     }
-    bSpendZeroConfChange = GetArg("-spendzeroconfchange", true);
 
     if (mapArgs.count("-mininput"))
     {
@@ -646,12 +673,12 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (file) fclose(file);
     static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
     if (!lock.try_lock())
-        return InitError(strprintf(_("Cannot obtain a lock on data directory %s. Litecoin is probably already running."), strDataDir.c_str()));
+        return InitError(strprintf(_("Cannot obtain a lock on data directory %s. Mincoin is probably already running."), strDataDir.c_str()));
 
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
         ShrinkDebugFile();
     printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    printf("Litecoin version %s (%s)\n", FormatFullVersion().c_str(), CLIENT_DATE.c_str());
+    printf("Mincoin version %s (%s)\n", FormatFullVersion().c_str(), CLIENT_DATE.c_str());
     printf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
     if (!fLogTimestamps)
         printf("Startup time: %s\n", DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()).c_str());
@@ -661,7 +688,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     std::ostringstream strErrors;
 
     if (fDaemon)
-        fprintf(stdout, "Litecoin server starting\n");
+        fprintf(stdout, "Mincoin server starting\n");
 
     if (nScriptCheckThreads) {
         printf("Using %u threads for script verification\n", nScriptCheckThreads);
@@ -670,10 +697,6 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     int64 nStart;
-
-#if defined(USE_SSE2)
-    scrypt_detect_sse2();
-#endif
 
     // ********************************************************* Step 5: verify wallet database integrity
 
@@ -822,6 +845,10 @@ bool AppInit2(boost::thread_group& threadGroup)
         AddOneShot(strDest);
 
     // ********************************************************* Step 7: load block chain
+
+#if defined(USE_SSE2)
+    scrypt_detect_sse2(cpuid_edx);
+#endif
 
     fReindex = GetBoolArg("-reindex");
 
@@ -1002,10 +1029,10 @@ bool AppInit2(boost::thread_group& threadGroup)
                 InitWarning(msg);
             }
             else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of Litecoin") << "\n";
+                strErrors << _("Error loading wallet.dat: Wallet requires newer version of Mincoin") << "\n";
             else if (nLoadWalletRet == DB_NEED_REWRITE)
             {
-                strErrors << _("Wallet needed to be rewritten: restart Litecoin to complete") << "\n";
+                strErrors << _("Wallet needed to be rewritten: restart Mincoin to complete") << "\n";
                 printf("%s", strErrors.str().c_str());
                 return InitError(strErrors.str());
             }
